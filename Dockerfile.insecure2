@@ -1,0 +1,32 @@
+# Volontairement INSECURE pour le TP (v2)
+# - Base image avec vulnérabilités détectables
+# - Outils de build laissés dans l'image finale
+# - Exécution en root
+# - Copie d'un .env (mauvaise pratique)
+
+FROM ubuntu:22.04
+
+WORKDIR /app
+
+# Packages système non épinglés + surface d'attaque importante
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      ca-certificates curl git build-essential && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copier "un secret" (factice) : mauvaise pratique
+COPY .env.example /app/.env
+
+# Copier l'app
+COPY app/ /app/app/
+
+# Build dans l'image finale (mauvaise pratique)
+RUN cd /app/app && \
+    apt-get update && apt-get install -y --no-install-recommends golang && \
+    go build -o /app/server ./main.go
+
+EXPOSE 8080
+ENV PORT=8080
+
+# Root par défaut (mauvaise pratique)
+CMD ["/app/server"]

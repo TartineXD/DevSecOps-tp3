@@ -1,0 +1,30 @@
+stages:
+  - build
+  - scan
+
+variables:
+  IMAGE_TAG: "module3/secure:ci"
+
+build:
+  stage: build
+  image: docker:27
+  services:
+    - docker:27-dind
+  script:
+    - docker build -f Dockerfile.secure -t "$IMAGE_TAG" .
+    - docker save "$IMAGE_TAG" -o image.tar
+  artifacts:
+    paths:
+      - image.tar
+    expire_in: 1 day
+
+trivy_scan:
+  stage: scan
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  dependencies:
+    - build
+  script:
+    - docker load -i image.tar
+    - trivy image --ignore-unfixed --severity HIGH,CRITICAL --exit-code 1 "$IMAGE_TAG"

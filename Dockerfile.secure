@@ -1,0 +1,32 @@
+# Version SECURE (référence)
+# - Multi-stage build
+# - Runtime minimal
+# - Exécution en non-root
+# - Pas de "secret" embarqué
+# - Surface d'attaque réduite
+
+# ---- builder
+FROM golang:1.22-alpine AS builder
+
+WORKDIR /src
+RUN apk add --no-cache ca-certificates
+
+COPY app/go.mod /src/app/go.mod
+WORKDIR /src/app
+RUN go mod download
+
+COPY app/ /src/app/
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /out/server ./main.go
+
+# ---- runtime
+# Image runtime minimale (distroless) + nonroot
+FROM gcr.io/distroless/static-debian12:nonroot
+
+WORKDIR /
+COPY --from=builder /out/server /server
+
+EXPOSE 8080
+ENV PORT=8080
+
+USER nonroot:nonroot
+ENTRYPOINT ["/server"]

@@ -1,0 +1,27 @@
+name: container-security
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build image (secure)
+        run: |
+          docker build -f Dockerfile.secure -t module3/secure:ci .
+
+      - name: Trivy scan (fail on HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: 'module3/secure:ci'
+          format: 'table'
+          ignore-unfixed: true
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
