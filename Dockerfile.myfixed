@@ -19,7 +19,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 # =========================
 # Stage 2 — Runtime
 # =========================
-FROM gcr.io/distroless/base-debian12 AS builder2
+FROM gcr.io/distroless/base-debian12:12.11
 
 WORKDIR /app
 
