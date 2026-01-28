@@ -1,32 +1,36 @@
-# Volontairement INSECURE pour le TP
-# - Base image large/ancienne
-# - Outils de build laissés dans l'image finale
-# - Exécution en root
-# - Copie d'un .env (mauvaise pratique)
-
-FROM ubuntu:22.04
+# =========================
+# Stage 1 — Build
+# =========================
+FROM golang:1.22.1-bookworm AS builder
 
 WORKDIR /app
 
-# Packages système non épinglés + surface d'attaque importante
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-      ca-certificates curl=7.81.0-* git build-essential && \
-    rm -rf /var/lib/apt/lists/*
+# Dépendances Go
+COPY app/go.mod app/go.sum ./
+RUN go mod download
 
-# Copier "un secret" (factice) : mauvaise pratique
-COPY .env.example /app/.env
+# Code source
+COPY app/ .
 
-# Copier l'app
-COPY app/ /app/app/
+# Build statique
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -o server main.go
 
-# Build dans l'image finale (mauvaise pratique)
-RUN cd /app/app && \
-    apt-get update && apt-get install -y --no-install-recommends golang && \
-    go build -o /app/server ./main.go
+# =========================
+# Stage 2 — Runtime
+# =========================
+FROM gcr.io/distroless/base-debian12
+
+WORKDIR /app
+
+# Copier uniquement le binaire
+COPY --from=builder /app/server /app/server
+
+# Exécution non-root
+USER nonroot:nonroot
 
 EXPOSE 8080
 ENV PORT=8080
 
-# Root par défaut (mauvaise pratique)
-CMD ["/app/server"]
+ENTRYPOINT ["/app/server"]
+
